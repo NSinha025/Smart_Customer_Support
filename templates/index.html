@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Customer Support Agent</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="chat-container">
+        <!-- Header -->
+        <div class="chat-header">
+            <div class="header-content">
+                <div class="agent-info">
+                    <i class="fas fa-robot"></i>
+                    <h1>Smart Customer Support</h1>
+                </div>
+                <div class="header-actions">
+                    <button id="clearBtn" class="clear-btn" title="Clear conversation">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Messages -->
+        <div class="chat-messages" id="chatMessages">
+            <div class="message agent-message" id="greetingMessage">
+                <div class="message-content">
+                    <div class="loading">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sample Queries -->
+        <div class="sample-queries" id="sampleQueries" style="display: none;">
+            <h3>Try these sample queries:</h3>
+            <div class="query-buttons" id="queryButtons">
+                <!-- Sample query buttons will be populated here -->
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="chat-input">
+            <div class="input-container">
+                <input type="text" id="messageInput" placeholder="Type your message here..." autocomplete="off">
+                <button id="sendBtn" class="send-btn">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status indicator -->
+    <div class="status-indicator" id="statusIndicator">
+        <span class="status-text">Connecting...</span>
+    </div>
+
+    <script>
+        class ChatBot {
+            constructor() {
+                this.chatMessages = document.getElementById('chatMessages');
+                this.messageInput = document.getElementById('messageInput');
+                this.sendBtn = document.getElementById('sendBtn');
+                this.clearBtn = document.getElementById('clearBtn');
+                this.statusIndicator = document.getElementById('statusIndicator');
+                this.sampleQueries = document.getElementById('sampleQueries');
+                this.queryButtons = document.getElementById('queryButtons');
+                
+                this.initializeEventListeners();
+                this.loadGreeting();
+            }
+
+            initializeEventListeners() {
+                // Send message on button click
+                this.sendBtn.addEventListener('click', () => this.sendMessage());
+                
+                // Send message on Enter key
+                this.messageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+
+                // Clear conversation
+                this.clearBtn.addEventListener('click', () => this.clearConversation());
+            }
+
+            async loadGreeting() {
+                try {
+                    const response = await fetch('/greeting');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.updateGreetingMessage(data.greeting);
+                        this.setupSampleQueries(data.sample_queries);
+                        this.updateStatus('Ready', 'success');
+                    } else {
+                        this.updateGreetingMessage("Hello! I'm your customer support assistant. How can I help you today?");
+                        this.updateStatus('Ready', 'success');
+                    }
+                } catch (error) {
+                    console.error('Error loading greeting:', error);
+                    this.updateGreetingMessage("Hello! I'm your customer support assistant. How can I help you today?");
+                    this.updateStatus('Error connecting', 'error');
+                }
+            }
+
+            updateGreetingMessage(message) {
+                const greetingElement = document.getElementById('greetingMessage');
+                greetingElement.querySelector('.message-content').innerHTML = `
+                    <div class="message-text">${this.formatMessage(message)}</div>
+                    <div class="message-time">${this.getCurrentTime()}</div>
+                `;
+            }
+
+            setupSampleQueries(queries) {
+                if (queries && queries.length > 0) {
+                    this.queryButtons.innerHTML = '';
+                    queries.forEach(query => {
+                        const button = document.createElement('button');
+                        button.className = 'query-btn';
+                        button.textContent = query;
+                        button.addEventListener('click', () => {
+                            this.messageInput.value = query;
+                            this.sendMessage();
+                        });
+                        this.queryButtons.appendChild(button);
+                    });
+                    this.sampleQueries.style.display = 'block';
+                }
+            }
+
+            async sendMessage() {
+                const message = this.messageInput.value.trim();
+                if (!message) return;
+
+                // Hide sample queries after first message
+                this.sampleQueries.style.display = 'none';
+
+                // Add user message to chat
+                this.addMessage(message, 'user');
+                this.messageInput.value = '';
+                this.updateStatus('Thinking...', 'processing');
+
+                // Show typing indicator
+                const typingId = this.showTypingIndicator();
+
+                try {
+                    const response = await fetch('/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ message: message })
+                    });
+
+                    const data = await response.json();
+                    
+                    // Remove typing indicator
+                    this.removeTypingIndicator(typingId);
+                    
+                    if (data.success) {
+                        this.addMessage(data.message, 'agent', data.source);
+                        this.updateStatus('Ready', 'success');
+                    } else {
+                        this.addMessage(data.message || 'Sorry, I encountered an error.', 'agent', 'error');
+                        this.updateStatus('Error', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                    this.removeTypingIndicator(typingId);
+                    this.addMessage('Sorry, I encountered a connection error. Please try again.', 'agent', 'error');
+                    this.updateStatus('Connection error', 'error');
+                }
+            }
+
+            addMessage(text, sender, source = null) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}-message`;
+                
+                let sourceIndicator = '';
+                if (source) {
+                    const sourceLabels = {
+                        'logistics_agent': '<i class="fas fa-database"></i> Logistics',
+                        'openai': '<i class="fas fa-brain"></i> AI Assistant',
+                        'error': '<i class="fas fa-exclamation-triangle"></i> Error'
+                    };
+                    sourceIndicator = `<div class="message-source">${sourceLabels[source] || source}</div>`;
+                }
+
+                messageDiv.innerHTML = `
+                    <div class="message-content">
+                        ${sourceIndicator}
+                        <div class="message-text">${this.formatMessage(text)}</div>
+                        <div class="message-time">${this.getCurrentTime()}</div>
+                    </div>
+                `;
+
+                this.chatMessages.appendChild(messageDiv);
+                this.scrollToBottom();
+            }
+
+            showTypingIndicator() {
+                const typingDiv = document.createElement('div');
+                const typingId = 'typing_' + Date.now();
+                typingDiv.id = typingId;
+                typingDiv.className = 'message agent-message typing';
+                typingDiv.innerHTML = `
+                    <div class="message-content">
+                        <div class="loading">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+                `;
+                this.chatMessages.appendChild(typingDiv);
+                this.scrollToBottom();
+                return typingId;
+            }
+
+            removeTypingIndicator(typingId) {
+                const typingElement = document.getElementById(typingId);
+                if (typingElement) {
+                    typingElement.remove();
+                }
+            }
+
+            async clearConversation() {
+                if (confirm('Are you sure you want to clear the conversation?')) {
+                    try {
+                        await fetch('/clear', { method: 'POST' });
+                        this.chatMessages.innerHTML = '';
+                        this.loadGreeting();
+                        this.sampleQueries.style.display = 'block';
+                    } catch (error) {
+                        console.error('Error clearing conversation:', error);
+                    }
+                }
+            }
+
+            formatMessage(text) {
+                // Convert newlines to <br> tags
+                return text.replace(/\n/g, '<br>');
+            }
+
+            getCurrentTime() {
+                return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+
+            scrollToBottom() {
+                this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+            }
+
+            updateStatus(text, type) {
+                this.statusIndicator.className = `status-indicator ${type}`;
+                this.statusIndicator.querySelector('.status-text').textContent = text;
+                
+                // Auto-hide success status after 2 seconds
+                if (type === 'success') {
+                    setTimeout(() => {
+                        this.statusIndicator.className = 'status-indicator hidden';
+                    }, 2000);
+                }
+            }
+        }
+
+        // Initialize the chatbot when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new ChatBot();
+        });
+    </script>
+</body>
+</html>
