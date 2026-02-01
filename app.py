@@ -16,7 +16,7 @@ load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
 # Initialize the Support Agent
 support_agent = SupportAgent()
@@ -130,7 +130,7 @@ def initialize_database():
 
 def check_environment():
     """Check if required environment variables are set"""
-    required_vars = ['OPENAI_API_KEY']
+    required_vars = ['SECRET_KEY']
     missing_vars = []
     
     for var in required_vars:

@@ -15,9 +15,9 @@ class SupportAgent:
     
     def __init__(self):
         # Initialize OpenAI client
-        openai.api_key = os.getenv('OPENAI_API_KEY')
+        openai.api_key = os.getenv('SECRET_KEY')
         if not openai.api_key:
-            print("Warning: OPENAI_API_KEY not found in environment variables")
+            print("Warning: SECRET_KEY not found in environment variables")
         
         # Initialize Logistics Agent
         self.logistics_agent = LogisticsAgent()

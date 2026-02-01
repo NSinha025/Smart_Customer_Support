@@ -65,7 +65,7 @@ pip install -r requirements.txt
 cp .env.template .env
 
 # Edit .env and add your OpenAI API key
-# OPENAI_API_KEY=sk-your-actual-api-key-here
+# SECRET_KEY=sk-your-actual-api-key-here
 ```
 
 **Note**: The system will work for order-related queries even without an OpenAI API key. The AI features are only used for general questions.
