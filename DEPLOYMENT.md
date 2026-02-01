@@ -115,6 +115,44 @@ Before deploying, make sure you have:
 
 ---
 
+## 🗄️ Database Deployment
+
+**Important:** Your app uses SQLite database which is automatically created on first run.
+
+### How it works:
+1. The app checks if `db/customer_support.db` exists
+2. If not found, it automatically creates it with sample data
+3. The database includes 3 customers, 4 orders, and logistics tracking
+
+### Deployment Options:
+
+#### Option A: Auto-generate on each deploy (Recommended for testing)
+- Keep `*.db` in `.gitignore` 
+- Database creates automatically when app starts
+- **Note:** Data resets on each deployment restart
+
+#### Option B: Commit database to Git (Simple but not scalable)
+```bash
+# Remove db/*.db from .gitignore
+git add db/customer_support.db
+git commit -m "Add production database"
+git push
+```
+**Pros:** Simple, data persists  
+**Cons:** Not ideal for production, can't scale
+
+#### Option C: Use managed database (Best for production)
+Upgrade to PostgreSQL for production:
+
+1. **Create PostgreSQL database** on your platform (Railway, Render, etc.)
+2. **Update code** to use PostgreSQL instead of SQLite
+3. **Migrate data** from SQLite to PostgreSQL
+
+```bash
+# Install PostgreSQL adapter
+pip install psycopg2-binary
+```
+
 ## 🔧 Configuration Files Included
 
 Your project now includes deployment configs for multiple platforms:
@@ -136,9 +174,11 @@ venv/
 ```
 
 Set these environment variables on your hosting platform:
-- `OPENAI_API_KEY` - Your OpenAI API key
-- `SECRET_KEY` - Random string for Flask sessions
-
+**Database not persisting?**
+- Free tiers have ephemeral storage (files reset on restart)
+- Solution 1: Commit the database file to Git (quick fix)
+- Solution 2: Use persistent volumes (Render, Railway offer this)
+- Solution 3: Migrate to managed PostgreSQL database
 ## 📊 Free Tier Limits
 
 | Platform | Free Tier | Best For |
