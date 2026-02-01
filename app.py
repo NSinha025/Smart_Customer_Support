@@ -158,7 +158,11 @@ if __name__ == '__main__':
     
     # Start the Flask development server
     print("🌐 Starting Flask server...")
-    print("📱 Open your browser and go to: http://127.0.0.1:5000")
+    
+    # Get port from environment or default to 5000
+    port = int(os.getenv('PORT', 5000))
+    
+    print(f"📱 Open your browser and go to: http://0.0.0.0:{port}")
     print("💬 You can test queries like:")
     print("   - 'Where is my order #1?'")
     print("   - 'What's the status of my earbuds?'")
@@ -167,6 +171,6 @@ if __name__ == '__main__':
     
     app.run(
         debug=True,
-        host='127.0.0.1',
-        port=5000
+        host='0.0.0.0',
+        port=port
     )
